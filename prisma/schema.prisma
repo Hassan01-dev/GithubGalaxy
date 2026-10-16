@@ -1,0 +1,71 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+/// Public GitHub metadata, cached. GitHub stays the source of truth.
+model Repository {
+  id               Int       @id // GitHub repository id
+  fullName         String    @unique
+  owner            String
+  name             String
+  description      String?
+  htmlUrl          String
+  homepage         String?
+  stars            Int
+  forks            Int
+  openIssues       Int
+  language         String?
+  topics           String[]
+  license          String?
+  archived         Boolean   @default(false)
+  defaultBranch    String?
+  createdAt        DateTime
+  updatedAt        DateTime
+  pushedAt         DateTime
+  latestRelease    String?
+  latestReleaseAt  DateTime?
+  releaseCheckedAt DateTime?
+  fetchedAt        DateTime
+
+  snapshots StarSnapshot[]
+}
+
+/// One star count per repo per day, captured whenever we fetch it.
+/// Lets us show measured star growth instead of guessing.
+model StarSnapshot {
+  repoId Int
+  day    DateTime   @db.Date
+  stars  Int
+  repo   Repository @relation(fields: [repoId], references: [id], onDelete: Cascade)
+
+  @@id([repoId, day])
+}
+
+/// The last successful GitHub query for a galaxy region.
+model RegionFetch {
+  galaxy    String
+  region    String
+  query     String
+  repoIds   Int[]
+  fetchedAt DateTime
+
+  @@id([galaxy, region])
+}
+
+/// Deeper per-repo data fetched when a planet is inspected. Keyed by lowercase
+/// full name (no relation): scans can be requested for repos we haven't stored.
+model RepoScan {
+  fullName          String   @id
+  contributorsCount Int?
+  topContributors   Json
+  weeklyCommits     Json? // 52 numbers, or null while GitHub computes them
+  languages         Json
+  releases          Json
+  partial           Boolean
+  scannedAt         DateTime
+}
