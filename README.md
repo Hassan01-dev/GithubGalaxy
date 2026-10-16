@@ -51,16 +51,15 @@ Next.js 16 (App Router, Cache Components) · React 19 · Three.js + React Three 
 
 ```bash
 npm install                  # also runs `prisma generate`
-createdb galaxy_development
-cp .env.example .env         # local URLs already point at galaxy_development
-npm run db:migrate
+neon env pull                # writes DATABASE_URL + DATABASE_URL_UNPOOLED for the linked Neon branch into .env
+npm run db:deploy            # apply migrations (direct connection)
 npm run dev                  # http://localhost:3000
 ```
 
 | Variable | Required | Purpose |
 |---|---|---|
-| `DATABASE_URL` | yes | Runtime connection. On Supabase, use the **pooled** URL (port 6543, `?pgbouncer=true&connection_limit=1`). |
-| `DIRECT_URL` | yes | Migrations only. On Supabase, use the **direct** URL (port 5432). |
+| `DATABASE_URL` | yes | Runtime connection, **pooled** (Neon: the `-pooler` host). |
+| `DATABASE_URL_UNPOOLED` | yes | Migrations only, **direct** (Neon: same host without `-pooler`). On other hosts you can name it `DIRECT_URL` instead. |
 | `GITHUB_TOKEN` | strongly recommended | Server-only. Raises GitHub limits (search: 10 → 30 req/min; core: 60 → 5,000 req/h). Any classic or fine-grained token with no scopes works. **Never** prefix it with `NEXT_PUBLIC_`. |
 
 **Why the token matters:**
@@ -163,8 +162,10 @@ Press the ship button (bottom-left) to fly the ship yourself:
 
 ## Deploying (Vercel Hobby + Supabase free)
 
-1. Create a Supabase project. Copy the pooled and direct connection strings.
-2. In Vercel, set `DATABASE_URL` (pooled), `DIRECT_URL` (direct), and optionally `GITHUB_TOKEN`.
+1. **Database:** a Neon project, linked here with `.neon` and `neon.ts`. To get the connection strings:
+   - Easiest: connect Neon to the Vercel project from Vercel → Storage. Vercel then sets `DATABASE_URL` and `DATABASE_URL_UNPOOLED` itself.
+   - Or run `neon env pull` and copy both values into Vercel by hand.
+2. In Vercel, also set `GITHUB_TOKEN`. Put the function region next to Neon: both are `us-east-1` / `iad1`.
 3. Set the build command to `npm run db:deploy && npm run build`.
 
 The prerendered galaxy shell is regenerated in the background. Postgres is the durable cache, so serverless cold starts don't refetch GitHub. If the build can't reach GitHub or the DB, it ships the committed seed and recovers at runtime.
